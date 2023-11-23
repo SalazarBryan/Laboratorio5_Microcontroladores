@@ -133,17 +133,10 @@ void loop()
     EI_IMPULSE_ERROR r = run_classifier_continuous(&signal, &result, false);
 
     if (++printResultsCounter >= (SLICES_PER_WINDOW)) {
-        // Print the predictions
-        ei_printf("Predictions ");
-        ei_printf("(DSP: %d ms., Classification: %d ms., Anomaly: %d ms.)",
-            result.timing.dsp, result.timing.classification, result.timing.anomaly);
-        ei_printf(": \n");
         for (size_t ix = 0; ix < EI_CLASSIFIER_LABEL_COUNT; ix++) {
             if (result.classification[ix].label != NOISE_LABEL &&
                 result.classification[ix].value > MIN_CORRECT_PREDICTION) {
-                ei_printf("Detected %s: %.5f\n", result.classification[ix].label,
-                          result.classification[ix].value);
-                Serial.write(result.classification[ix].label);
+                ei_printf("%s\n",result.classification[ix].label);
             }
         }
         printResultsCounter = 0;
