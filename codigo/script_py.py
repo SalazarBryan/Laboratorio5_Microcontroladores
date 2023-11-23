@@ -1,9 +1,7 @@
 #!/usr/bin/python3
 import serial
 import paho.mqtt.client as mqtt
-import json
 import datetime
-import requests
 
 # Functions
 def on_publish(client, userdata, result):
@@ -22,53 +20,49 @@ ser = serial.Serial(
 print("Connected to: " + ser.portstr)
 
 # Datos para la conexión con el cliente MQTT:
-line = []
-dictionary = dict()
 broker = "iot.eie.ucr.ac.cr"
 port = 1883
 topic = "v1/devices/me/telemetry"
-username = "STM"
-password = "ozwnzj5hfdmn1nyjlxev"
+username = "VOICE_DET"
+password = "ls6xz"
 
 # Abrir el archivo en modo de escritura
 archivo_salida = 'datos_del_microfono.txt'
 
 # Establecer los parámetros de conexión MQTT
-client = mqtt.Client(username)
+client = mqtt.Client()
 client.on_publish = on_publish
-client.username_pw_set(password)
+client.username_pw_set(username, password)
 client.connect(broker, port, keepalive=60)
 
-while True:
-    # Leer una línea desde el puerto serie
-    linea = ser.readline().decode().strip()
+switches = {
+    'Luces': False,
+    'Television': False,
+    'Calefaccion': False
+}
 
+while True:
+    # Leer una línea desde el puerto serial
+    linea = ser.readline().decode().strip()
+    print(linea)
     # Obtener la fecha y hora actual
     tiempo_actual = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     # Etiquetas para los comandos de voz
-    etiquetas = {
-        'Luces': 'ComandoLuces',
-        'Televisión': 'ComandoTV',
-        'Calefacción': 'ComandoCalefaccion'
-    }
-
-    # Etiqueta del comando de voz (por defecto es desconocido)
-    etiqueta_comando = 'ComandoDesconocido'
+    etiquetas = ['Luces', 'Television', 'Calefaccion']
 
     # Verificar si la línea contiene alguna palabra clave de comando
-    for comando, etiqueta in etiquetas.items():
-        if comando.lower() in linea.lower():
-            etiqueta_comando = etiqueta
-            break
+    for comando in etiquetas:
+        if comando.lower() == linea.lower():
+            # Toggle switches
+            switches[comando] = ~switches[comando]
+            # Escribir en el archivo
+            with open(archivo_salida, 'a') as archivo:
+                archivo.write(f'{tiempo_actual} - {comando}: {linea}\n')
 
-    # Escribir en el archivo
-    with open(archivo_salida, 'a') as archivo:
-        archivo.write(f'{tiempo_actual} - {etiqueta_comando}: {linea}\n')
+            # Mostrar en la consola para verificar
+            print(f'{tiempo_actual} - {comando}: {linea}')
 
-    # Mostrar en la consola para verificar
-    print(f'{tiempo_actual} - {etiqueta_comando}: {linea}')
-
-    # Enviar datos a ThingsBoard
-    payload = {etiqueta_comando: linea}
-    client.publish(topic, json.dumps(payload))
+            # Enviar datos a ThingsBoard
+            payload = {comando: switches[comando]}
+            client.publish(topic, str(payload))
